@@ -71,6 +71,7 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
   const token = getAuthToken();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
     ...options.headers,
   };
   
@@ -153,7 +154,10 @@ export async function fetchTrips(params: TripSearchParams = {}): Promise<Trip[]>
   
   const response = await fetch(url, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
   });
   
   return handleResponse<Trip[]>(response);
@@ -162,7 +166,10 @@ export async function fetchTrips(params: TripSearchParams = {}): Promise<Trip[]>
 export async function fetchTripById(id: number): Promise<Trip> {
   const response = await fetch(`${API_BASE_URL}/trips/${id}/`, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
   });
   
   return handleResponse<Trip>(response);
@@ -175,7 +182,10 @@ export async function fetchTripById(id: number): Promise<Trip> {
 export async function fetchRoutes(): Promise<Route[]> {
   const response = await fetch(`${API_BASE_URL}/routes/`, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
   });
   
   return handleResponse<Route[]>(response);
@@ -188,7 +198,10 @@ export async function fetchRoutes(): Promise<Route[]> {
 export async function fetchBuses(): Promise<BusDetail[]> {
   const response = await fetch(`${API_BASE_URL}/buses/`, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
   });
   
   return handleResponse<BusDetail[]>(response);
@@ -201,7 +214,10 @@ export async function fetchBuses(): Promise<BusDetail[]> {
 export async function fetchAmenities(): Promise<BusAmenity[]> {
   const response = await fetch(`${API_BASE_URL}/amenities/`, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
   });
   
   return handleResponse<BusAmenity[]>(response);
@@ -243,7 +259,10 @@ export async function fetchReviews(busId?: number): Promise<Review[]> {
   
   const response = await fetch(url, {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
   });
   
   return handleResponse<Review[]>(response);
