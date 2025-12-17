@@ -1,16 +1,18 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale" // Để hiển thị lịch tiếng Việt
-import { 
-  MapPin, 
-  Calendar as CalendarIcon, 
-  Search, 
-  Bus, 
-  Wifi, 
-  Star, 
-  ArrowRight 
+import {
+  MapPin,
+  Calendar as CalendarIcon,
+  Search,
+  Bus,
+  Wifi,
+  Star,
+  ArrowRight,
+  Loader2
 } from "lucide-react"
 
 // --- Real Shadcn Imports ---
@@ -35,27 +37,62 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 
-export default function HomePage() {
-  const [date, setDate] = React.useState<Date | undefined>(new Date())
+// --- API Imports ---
+import { fetchRoutes } from "@/lib/api"
+import { Route } from "@/lib/types"
 
-  // Data mẫu
-  const popularRoutes = [
-    { id: 1, from: "Hà Nội", to: "Sapa", price: "350.000đ", time: "5h 30m", type: "Limousine 9 chỗ", image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1000&auto=format&fit=crop" },
-    { id: 2, from: "Sài Gòn", to: "Đà Lạt", price: "280.000đ", time: "6h 00m", type: "Giường nằm 34", image: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=1000&auto=format&fit=crop" },
-    { id: 3, from: "Hà Nội", to: "Hạ Long", price: "200.000đ", time: "2h 30m", type: "Ghế ngồi 16 chỗ", image: "https://images.unsplash.com/photo-1559038465-e92fa44a3626?q=80&w=1000&auto=format&fit=crop" },
-    { id: 4, from: "Đà Nẵng", to: "Nha Trang", price: "400.000đ", time: "9h 15m", type: "Limousine 22 phòng", image: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=1000&auto=format&fit=crop" },
+export default function HomePage() {
+  const router = useRouter()
+  const [date, setDate] = React.useState<Date | undefined>(new Date())
+  const [origin, setOrigin] = React.useState("")
+  const [destination, setDestination] = React.useState("")
+
+  // Routes from API
+  const [routes, setRoutes] = React.useState<Route[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  // Fetch routes on mount
+  React.useEffect(() => {
+    async function loadRoutes() {
+      try {
+        const data = await fetchRoutes()
+        setRoutes(data)
+      } catch (err) {
+        console.error("Failed to fetch routes:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadRoutes()
+  }, [])
+
+  // Handle search
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (origin) params.append('origin', origin)
+    if (destination) params.append('destination', destination)
+    if (date) params.append('date', format(date, 'yyyy-MM-dd'))
+    router.push(`/search?${params.toString()}`)
+  }
+
+  // Route images (fallback)
+  const routeImages = [
+    "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1559038465-e92fa44a3626?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=1000&auto=format&fit=crop",
   ]
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      
+
       {/* --- HERO SECTION & SEARCH --- */}
       <div className="relative bg-slate-900 pb-32">
         {/* Background Image Overlay */}
         <div className="absolute inset-0 overflow-hidden">
-          <img 
-            src="https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=2070&auto=format&fit=crop" 
-            alt="Bus Background" 
+          <img
+            src="https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=2070&auto=format&fit=crop"
+            alt="Bus Background"
             className="h-full w-full object-cover opacity-40"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900/90" />
@@ -75,7 +112,7 @@ export default function HomePage() {
       {/* --- SEARCH WIDGET (Using Real Shadcn Components) --- */}
       <div className="relative -mt-24 px-4 sm:px-6 lg:px-8 z-10">
         <div className="mx-auto max-w-5xl rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5">
-          
+
           {/* Tabs: Một chiều / Khứ hồi */}
           <Tabs defaultValue="one-way" className="w-full mb-6">
             <TabsList className="grid w-[300px] grid-cols-2">
@@ -86,21 +123,21 @@ export default function HomePage() {
 
           {/* Search Inputs Grid */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-12 items-end">
-            
+
             {/* Nơi đi */}
             <div className="col-span-1 md:col-span-3 space-y-2">
               <Label className="text-xs font-semibold text-slate-500 uppercase">Điểm đi</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input type="text" placeholder="Tỉnh/Thành phố" className="pl-9 h-11" />
+                <Input type="text" placeholder="Tỉnh/Thành phố" className="pl-9 h-11" value={origin} onChange={(e) => setOrigin(e.target.value)} />
               </div>
             </div>
 
             {/* Swap Button Visual */}
             <div className="hidden md:flex col-span-1 justify-center pb-1">
-               <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
-                 <ArrowRight className="h-4 w-4 text-slate-400" />
-               </Button>
+              <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
+                <ArrowRight className="h-4 w-4 text-slate-400" />
+              </Button>
             </div>
 
             {/* Nơi đến */}
@@ -108,7 +145,7 @@ export default function HomePage() {
               <Label className="text-xs font-semibold text-slate-500 uppercase">Điểm đến</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input type="text" placeholder="Tỉnh/Thành phố" className="pl-9 h-11" />
+                <Input type="text" placeholder="Tỉnh/Thành phố" className="pl-9 h-11" value={destination} onChange={(e) => setDestination(e.target.value)} />
               </div>
             </div>
 
@@ -142,8 +179,8 @@ export default function HomePage() {
 
             {/* Số khách (Select Shadcn) */}
             <div className="col-span-1 md:col-span-2 space-y-2">
-               <Label className="text-xs font-semibold text-slate-500 uppercase">Hành khách</Label>
-               <Select defaultValue="1">
+              <Label className="text-xs font-semibold text-slate-500 uppercase">Hành khách</Label>
+              <Select defaultValue="1">
                 <SelectTrigger className="h-11">
                   <SelectValue placeholder="Số khách" />
                 </SelectTrigger>
@@ -160,7 +197,7 @@ export default function HomePage() {
 
           {/* Search Button */}
           <div className="mt-6 flex justify-end">
-            <Button size="lg" className="w-full md:w-auto px-8 bg-orange-600 hover:bg-orange-700 text-base font-semibold shadow-lg shadow-orange-200">
+            <Button size="lg" className="w-full md:w-auto px-8 bg-orange-600 hover:bg-orange-700 text-base font-semibold shadow-lg shadow-orange-200" onClick={handleSearch}>
               <Search className="mr-2 h-5 w-5" /> Tìm chuyến xe
             </Button>
           </div>
@@ -175,37 +212,44 @@ export default function HomePage() {
             Xem tất cả <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
-        
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {popularRoutes.map((route) => (
-            <Card key={route.id} className="group overflow-hidden border-0 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl">
-              <div className="relative h-48 overflow-hidden">
-                <img src={route.image} alt="Route" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                <div className="absolute top-3 right-3">
-                  <Badge variant="secondary" className="backdrop-blur-md bg-white/90">{route.type}</Badge>
-                </div>
-              </div>
-              <CardContent className="p-5">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-lg text-slate-900">{route.from} <span className="text-slate-400 mx-1">-</span> {route.to}</h3>
-                </div>
-                <div className="flex items-center text-sm text-slate-500 mb-4">
-                  <Bus className="mr-2 h-4 w-4" />
-                  <span>{route.time} di chuyển</span>
-                </div>
-                <div className="flex items-center justify-between border-t pt-4">
-                  <div>
-                    <span className="text-xs text-slate-500">Giá từ</span>
-                    <p className="text-lg font-bold text-orange-600">{route.price}</p>
+
+        {loading ? (
+          <div className="col-span-4 flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+            <span className="ml-3 text-slate-600">Đang tải tuyến đường...</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {routes.slice(0, 4).map((route, idx) => (
+              <Card key={route.id} className="group overflow-hidden border-0 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl cursor-pointer" onClick={() => router.push(`/search?origin=${route.origin}&destination=${route.destination}`)}>
+                <div className="relative h-48 overflow-hidden">
+                  <img src={routeImages[idx % routeImages.length]} alt="Route" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="secondary" className="backdrop-blur-md bg-white/90">{Math.floor(route.duration_hours)}h {Math.round((route.duration_hours % 1) * 60)}m</Badge>
                   </div>
-                  <Button variant="outline" size="sm" className="border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800">
-                    Đặt vé
-                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-lg text-slate-900">{route.origin} <span className="text-slate-400 mx-1">→</span> {route.destination}</h3>
+                  </div>
+                  <div className="flex items-center text-sm text-slate-500 mb-4">
+                    <Bus className="mr-2 h-4 w-4" />
+                    <span>{route.points.length} điểm dừng</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t pt-4">
+                    <div>
+                      <span className="text-xs text-slate-500">Giá từ</span>
+                      <p className="text-lg font-bold text-orange-600">{route.base_price.toLocaleString()}đ</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-800">
+                      Đặt vé
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* --- FEATURES --- */}

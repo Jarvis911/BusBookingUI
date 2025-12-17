@@ -13,6 +13,7 @@ import {
   ArrowRight,
   ChevronDown,
   ArrowUpDown,
+  Loader2,
 } from "lucide-react";
 
 // --- Imports Shadcn UI ---
@@ -31,51 +32,54 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookingForm } from "@/components/booking-form";
 
-// --- Mock Data ---
-const tickets = [
-  {
-    id: 1,
-    operator: "Sao Việt",
-    type: "Limousine 9 chỗ",
-    from: "Hà Nội",
-    to: "Sapa",
-    startTime: "22:00",
-    endTime: "03:30",
-    duration: "5h 30m",
-    price: 350000,
-    originalPrice: 400000,
-    rating: 4.8,
-    reviewCount: 1240,
-    seatsAvailable: 5,
-    pickup: "Bến xe Mỹ Đình",
-    dropoff: "VP Sapa",
-    features: ["wifi", "water", "usb"],
-    image:
-      "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=300&auto=format&fit=crop",
-  },
-  {
-    id: 2,
-    operator: "Hà Sơn Hải Vân",
-    type: "Giường nằm Royal",
-    from: "Hà Nội",
-    to: "Sapa",
-    startTime: "07:00",
-    endTime: "12:30",
-    duration: "5h 30m",
-    price: 280000,
-    rating: 4.5,
-    reviewCount: 856,
-    seatsAvailable: 20,
-    pickup: "Bến xe Giáp Bát",
-    dropoff: "Bến xe Sapa",
-    features: ["wifi", "blanket"],
-    image:
-      "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=300&auto=format&fit=crop",
-  },
-  // Thêm data mẫu khác...
-];
+// --- API Imports ---
+import { fetchTrips } from "@/lib/api";
+import { Trip } from "@/lib/types";
 
 export default function SearchPage() {
+  const [trips, setTrips] = React.useState<Trip[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Load trips on mount
+  React.useEffect(() => {
+    async function loadTrips() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchTrips();
+        setTrips(data);
+      } catch (err) {
+        console.error("Failed to fetch trips:", err);
+        setError("Không thể tải danh sách chuyến xe. Vui lòng thử lại.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTrips();
+  }, []);
+
+  // Calculate available seats
+  const getAvailableSeats = (trip: Trip) => {
+    return trip.seat_map.filter((seat) => !seat.is_booked).length;
+  };
+
+  // Format time from ISO string
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Format duration
+  const formatDuration = (hours: number) => {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h}h ${m > 0 ? `${m}m` : ""}`.trim();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 py-8 font-sans text-slate-900">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -84,12 +88,12 @@ export default function SearchPage() {
           <div>
             <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
               <span>Trang chủ</span> <span className="text-xs">/</span>{" "}
-              <span>Hà Nội - Sapa</span>
+              <span>Tìm chuyến xe</span>
             </div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              Hà Nội <ArrowRight className="h-5 w-5 text-slate-400" /> Sapa
+              Danh sách chuyến xe
               <span className="ml-3 text-base font-normal text-slate-500">
-                (24 kết quả)
+                ({trips.length} kết quả)
               </span>
             </h1>
           </div>
@@ -207,15 +211,55 @@ export default function SearchPage() {
 
           {/* --- RIGHT CONTENT: TICKET LIST --- */}
           <main className="lg:col-span-3 space-y-4">
-            {tickets.map((ticket) => (
-              <TicketCard key={ticket.id} data={ticket} />
-            ))}
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+                <span className="ml-3 text-slate-600">Đang tải chuyến xe...</span>
+              </div>
+            )}
 
-            <div className="pt-8 flex justify-center">
-              <Button variant="outline" className="w-full sm:w-auto">
-                Xem thêm chuyến xe khác
-              </Button>
-            </div>
+            {/* Error State */}
+            {error && !loading && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
+                <p className="text-red-600 font-medium">{error}</p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => window.location.reload()}
+                >
+                  Thử lại
+                </Button>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && trips.length === 0 && (
+              <div className="rounded-xl border bg-white p-8 text-center">
+                <p className="text-slate-500">Không tìm thấy chuyến xe nào.</p>
+              </div>
+            )}
+
+            {/* Trip List */}
+            {!loading &&
+              !error &&
+              trips.map((trip) => (
+                <TicketCard
+                  key={trip.id}
+                  trip={trip}
+                  availableSeats={getAvailableSeats(trip)}
+                  formatTime={formatTime}
+                  formatDuration={formatDuration}
+                />
+              ))}
+
+            {!loading && !error && trips.length > 0 && (
+              <div className="pt-8 flex justify-center">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Xem thêm chuyến xe khác
+                </Button>
+              </div>
+            )}
           </main>
         </div>
       </div>
@@ -223,10 +267,27 @@ export default function SearchPage() {
   );
 }
 
-// --- SUB-COMPONENT: TICKET CARD (Quan trọng) ---
-function TicketCard({ data }: { data: any }) {
+// --- SUB-COMPONENT: TICKET CARD ---
+interface TicketCardProps {
+  trip: Trip;
+  availableSeats: number;
+  formatTime: (iso: string) => string;
+  formatDuration: (hours: number) => string;
+}
+
+function TicketCard({ trip, availableSeats, formatTime, formatDuration }: TicketCardProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isBookingOpen, setIsBookingOpen] = React.useState(false);
+
+  const { route, bus } = trip;
+  const price = route.base_price;
+  const startTime = formatTime(trip.departure_time);
+  const endTime = formatTime(trip.arrival_time);
+  const duration = formatDuration(route.duration_hours);
+
+  // Get pickup and dropoff points
+  const pickupPoints = route.points.filter((p) => p.point_type === "PICKUP");
+  const dropoffPoints = route.points.filter((p) => p.point_type === "DROPOFF");
 
   return (
     <Card className="overflow-hidden border-0 shadow-sm ring-1 ring-slate-200 transition-all hover:shadow-md">
@@ -234,13 +295,13 @@ function TicketCard({ data }: { data: any }) {
         {/* Image Section */}
         <div className="relative w-full sm:w-48 h-40 sm:h-auto shrink-0">
           <img
-            src={data.image}
-            alt={data.operator}
+            src={bus.main_image || "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=300&auto=format&fit=crop"}
+            alt={bus.bus_type}
             className="h-full w-full object-cover"
           />
           <div className="absolute top-2 left-2">
             <Badge className="bg-orange-500 hover:bg-orange-600">
-              Yêu thích
+              {bus.bus_type}
             </Badge>
           </div>
         </div>
@@ -251,32 +312,24 @@ function TicketCard({ data }: { data: any }) {
           <div className="flex justify-between items-start mb-4">
             <div>
               <h3 className="font-bold text-lg text-slate-900">
-                {data.operator}
+                {route.origin} → {route.destination}
               </h3>
               <div className="flex items-center gap-2 mt-1">
                 <Badge
                   variant="secondary"
                   className="font-normal text-slate-600 bg-slate-100"
                 >
-                  {data.type}
+                  {bus.bus_type}
                 </Badge>
                 <span className="flex items-center text-sm font-bold text-yellow-500">
-                  <Star className="w-3 h-3 fill-current mr-1" /> {data.rating}
-                </span>
-                <span className="text-xs text-slate-400">
-                  ({data.reviewCount} đánh giá)
+                  <Star className="w-3 h-3 fill-current mr-1" /> {bus.average_rating.toFixed(1)}
                 </span>
               </div>
             </div>
             <div className="text-right">
               <div className="text-xl font-bold text-orange-600">
-                {data.price.toLocaleString()}đ
+                {price.toLocaleString()}đ
               </div>
-              {data.originalPrice && (
-                <div className="text-sm text-slate-400 line-through">
-                  {data.originalPrice.toLocaleString()}đ
-                </div>
-              )}
             </div>
           </div>
 
@@ -284,30 +337,27 @@ function TicketCard({ data }: { data: any }) {
           <div className="flex items-center gap-8 mb-4">
             <div className="relative z-10">
               <div className="text-xl font-bold text-slate-800">
-                {data.startTime}
+                {startTime}
               </div>
               <div className="text-xs text-slate-500 mt-1 max-w-[100px] truncate">
-                {data.pickup}
+                {pickupPoints[0]?.name || route.origin}
               </div>
             </div>
 
             <div className="flex-1 flex flex-col items-center relative px-2">
-              <div className="text-xs text-slate-400 mb-1">{data.duration}</div>
+              <div className="text-xs text-slate-400 mb-1">{duration}</div>
               <div className="w-full h-[2px] bg-slate-200 relative">
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-slate-400"></div>
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-orange-500"></div>
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1 bg-slate-50 px-2 rounded-full border">
-                Không dừng nghỉ
               </div>
             </div>
 
             <div className="text-right relative z-10">
               <div className="text-xl font-bold text-slate-800">
-                {data.endTime}
+                {endTime}
               </div>
               <div className="text-xs text-slate-500 mt-1 max-w-[100px] truncate">
-                {data.dropoff}
+                {dropoffPoints[0]?.name || route.destination}
               </div>
             </div>
           </div>
@@ -315,15 +365,24 @@ function TicketCard({ data }: { data: any }) {
           {/* Footer Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-dashed">
             <div className="flex gap-3 text-slate-400">
-              {/* Feature Icons */}
-              <Wifi className="w-4 h-4" />
-              <Utensils className="w-4 h-4" />
-              <Armchair className="w-4 h-4" />
+              {/* Feature Icons from amenities */}
+              {bus.amenities.slice(0, 3).map((amenity) => (
+                <span key={amenity.id} title={amenity.name}>
+                  <Wifi className="w-4 h-4" />
+                </span>
+              ))}
+              {bus.amenities.length === 0 && (
+                <>
+                  <Wifi className="w-4 h-4" />
+                  <Utensils className="w-4 h-4" />
+                  <Armchair className="w-4 h-4" />
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-4">
               <span className="text-xs text-slate-500">
-                Còn {data.seatsAvailable} chỗ trống
+                Còn {availableSeats} chỗ trống
               </span>
               <div className="flex gap-2">
                 <Button
@@ -334,19 +393,18 @@ function TicketCard({ data }: { data: any }) {
                 >
                   Thông tin chi tiết{" "}
                   <ChevronDown
-                    className={`ml-1 h-4 w-4 transition-transform ${
-                      isExpanded ? "rotate-180" : ""
-                    }`}
+                    className={`ml-1 h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""
+                      }`}
                   />
                 </Button>
                 <Button
                   className="bg-orange-600 hover:bg-orange-700 text-white min-w-[100px]"
-                  onClick={() => setIsBookingOpen(!isBookingOpen)} // Toggle form
+                  onClick={() => setIsBookingOpen(!isBookingOpen)}
+                  disabled={availableSeats === 0}
                 >
                   {isBookingOpen ? "Đóng lại" : "Chọn chuyến"}
                 </Button>
               </div>
-              
             </div>
           </div>
         </div>
@@ -375,40 +433,66 @@ function TicketCard({ data }: { data: any }) {
               >
                 Chính sách
               </TabsTrigger>
-              <TabsTrigger
-                value="reviews"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-orange-600 data-[state=active]:text-orange-600 rounded-none h-full px-6 bg-transparent"
-              >
-                Đánh giá
-              </TabsTrigger>
             </TabsList>
             <div className="bg-white border border-t-0 p-4 rounded-b-lg">
               <TabsContent value="images" className="mt-0">
                 <div className="grid grid-cols-4 gap-2">
-                  <div className="h-24 bg-slate-200 rounded-md"></div>
-                  <div className="h-24 bg-slate-200 rounded-md"></div>
-                  <div className="h-24 bg-slate-200 rounded-md"></div>
-                  <div className="h-24 bg-slate-200 rounded-md flex items-center justify-center text-xs text-slate-500">
-                    +5 ảnh
-                  </div>
+                  {bus.images.length > 0 ? (
+                    bus.images.slice(0, 4).map((img, idx) => (
+                      <div key={img.id} className="h-24 bg-slate-200 rounded-md overflow-hidden">
+                        <img src={img.image} alt={img.caption} className="w-full h-full object-cover" />
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="h-24 bg-slate-200 rounded-md"></div>
+                      <div className="h-24 bg-slate-200 rounded-md"></div>
+                      <div className="h-24 bg-slate-200 rounded-md"></div>
+                      <div className="h-24 bg-slate-200 rounded-md flex items-center justify-center text-xs text-slate-500">
+                        Chưa có ảnh
+                      </div>
+                    </>
+                  )}
                 </div>
               </TabsContent>
               <TabsContent value="utilities" className="mt-0">
-                <p className="text-sm text-slate-600">
-                  Xe được trang bị đầy đủ tiện nghi: Wifi tốc độ cao, nước uống
-                  miễn phí, cổng sạc USB tại mỗi ghế...
+                {bus.amenities.length > 0 ? (
+                  <ul className="space-y-2">
+                    {bus.amenities.map((amenity) => (
+                      <li key={amenity.id} className="text-sm text-slate-600 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                        {amenity.name}: {amenity.description}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-slate-600">
+                    Xe được trang bị đầy đủ tiện nghi.
+                  </p>
+                )}
+              </TabsContent>
+              <TabsContent value="policy" className="mt-0">
+                <p className="text-sm text-slate-600 whitespace-pre-line">
+                  {bus.policy || "Chính sách hủy vé linh hoạt, hoàn tiền 100% trước 24h."}
                 </p>
               </TabsContent>
-              {/* Các tabs khác tương tự */}
             </div>
           </Tabs>
         </div>
       )}
+
+      {/* Booking Form */}
       {isBookingOpen && (
-                <div className="border-t border-slate-100">
-                  <BookingForm price={data.price} />
-                </div>
-              )}
+        <div className="border-t border-slate-100">
+          <BookingForm
+            price={price}
+            tripId={trip.id}
+            seatMap={trip.seat_map}
+            pickupPoints={pickupPoints}
+            dropoffPoints={dropoffPoints}
+          />
+        </div>
+      )}
     </Card>
   );
 }
