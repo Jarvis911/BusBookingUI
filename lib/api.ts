@@ -8,7 +8,65 @@ function getAuthToken(): string | null {
   return localStorage.getItem('access_token');
 }
 
-// --- Helper: Fetch with auth ---
+// --- Helper: Get stored refresh token ---
+function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('refresh_token');
+}
+
+// --- Helper: Refresh access token ---
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  // Prevent multiple simultaneous refresh requests
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    logout();
+    return false;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: refreshToken }),
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('access_token', data.access);
+        // Some implementations also return a new refresh token
+        if (data.refresh) {
+          localStorage.setItem('refresh_token', data.refresh);
+        }
+        return true;
+      }
+    } catch (e) {
+      console.error('Token refresh failed:', e);
+    }
+
+    // Refresh failed, clear tokens
+    logout();
+    return false;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    isRefreshing = false;
+    refreshPromise = null;
+  }
+}
+
+// --- Helper: Fetch with auth (auto-refresh on 401) ---
 async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
   const token = getAuthToken();
   const headers: HeadersInit = {
@@ -20,11 +78,28 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
   
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...options,
     headers,
     credentials: 'include',
   });
+  
+  // If 401 Unauthorized, try to refresh the token and retry
+  if (response.status === 401 && token) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      // Retry with new token
+      const newToken = getAuthToken();
+      if (newToken) {
+        (headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
+      }
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    }
+  }
   
   return response;
 }
