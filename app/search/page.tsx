@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Bus,
@@ -37,7 +38,30 @@ import { BookingForm } from "@/components/booking-form";
 import { fetchTrips } from "@/lib/api";
 import { Trip } from "@/lib/types";
 
+// Loading fallback component
+function SearchLoading() {
+  return (
+    <div className="min-h-screen bg-slate-50 py-8 font-sans text-slate-900">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+          <span className="ml-3 text-slate-600">Đang tải...</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main export with Suspense wrapper
 export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchLoading />}>
+      <SearchPageContent />
+    </Suspense>
+  );
+}
+
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const [trips, setTrips] = React.useState<Trip[]>([]);
   const [loading, setLoading] = React.useState(true);
