@@ -121,3 +121,46 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Bell shake animation for notifications */
+@keyframes bell-shake {
+  0% {
+    transform: rotate(0);
+  }
+
+  15% {
+    transform: rotate(15deg);
+  }
+
+  30% {
+    transform: rotate(-15deg);
+  }
+
+  45% {
+    transform: rotate(10deg);
+  }
+
+  60% {
+    transform: rotate(-10deg);
+  }
+
+  75% {
+    transform: rotate(5deg);
+  }
+
+  90% {
+    transform: rotate(-5deg);
+  }
+
+  100% {
+    transform: rotate(0);
+  }
+}
+
+.animate-bell-shake {
+  animation: bell-shake 0.8s ease-in-out;
+}
+
+.animate-bell-shake-continuous {
+  animation: bell-shake 0.8s ease-in-out infinite;
+}

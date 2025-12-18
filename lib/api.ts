@@ -1,4 +1,4 @@
-import { Trip, Booking, CreateBookingInput, Payment, LoginResponse, Route, BusDetail, BusAmenity, BookingDetail, Review, CreateReviewInput } from './types';
+import { Trip, Booking, CreateBookingInput, Payment, LoginResponse, Route, BusDetail, BusAmenity, BookingDetail, Review, CreateReviewInput, Notification } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -319,10 +319,12 @@ export async function createReview(data: CreateReviewInput): Promise<Review> {
 // PAYMENTS API
 // ============================================
 
-export async function createMoMoPayment(bookingId: number): Promise<Payment> {
+export async function createMoMoPayment(bookingIds: number | number[]): Promise<Payment> {
+  const ids = Array.isArray(bookingIds) ? bookingIds : [bookingIds];
+  
   const response = await fetchWithAuth(`${API_BASE_URL}/payments/momo/create/`, {
     method: 'POST',
-    body: JSON.stringify({ booking_id: bookingId }),
+    body: JSON.stringify({ booking_ids: ids }),
   });
   
   return handleResponse<Payment>(response);
@@ -384,4 +386,84 @@ export function logout(): void {
 
 export function isLoggedIn(): boolean {
   return !!getAuthToken();
+}
+
+// ============================================
+// NOTIFICATIONS API
+// ============================================
+
+export async function fetchNotifications(): Promise<Notification[]> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Chưa đăng nhập');
+
+  const response = await fetch(`${API_BASE_URL}/notifications/`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'ngrok-skip-browser-warning': 'true',
+    },
+  });
+
+  return handleResponse<Notification[]>(response);
+}
+
+export async function fetchUnreadNotificationCount(): Promise<number> {
+  const token = getAuthToken();
+  if (!token) return 0;
+
+  const response = await fetch(`${API_BASE_URL}/notifications/unread-count/`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'ngrok-skip-browser-warning': 'true',
+    },
+  });
+
+  const data = await handleResponse<{ unread_count: number }>(response);
+  return data.unread_count;
+}
+
+export async function markNotificationRead(notificationId?: number, markAll?: boolean): Promise<void> {
+  const token = getAuthToken();
+  if (!token) throw new Error('Chưa đăng nhập');
+
+  const body: Record<string, any> = {};
+  if (markAll) {
+    body.mark_all = true;
+  } else if (notificationId) {
+    body.notification_id = notificationId;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/notifications/mark-read/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'ngrok-skip-browser-warning': 'true',
+    },
+    body: JSON.stringify(body),
+  });
+
+  return handleResponse(response);
+}
+
+export async function createNotification(
+  title: string,
+  message: string,
+  notificationType: 'BOOKING' | 'PAYMENT' | 'PROMO' | 'SYSTEM' | 'REMINDER' = 'SYSTEM',
+  link?: string
+): Promise<Notification> {
+  const response = await fetchWithAuth(`${API_BASE_URL}/notifications/create/`, {
+    method: 'POST',
+    body: JSON.stringify({
+      title,
+      message,
+      notification_type: notificationType,
+      link,
+    }),
+  });
+
+  return handleResponse<Notification>(response);
 }

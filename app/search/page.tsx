@@ -32,11 +32,29 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { BookingForm } from "@/components/booking-form";
 
 // --- API Imports ---
 import { fetchTrips } from "@/lib/api";
 import { Trip } from "@/lib/types";
+
+// Sort options
+type SortOption = 'default' | 'price_asc' | 'price_desc' | 'time_asc' | 'time_desc' | 'rating';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'default', label: 'Mặc định' },
+  { value: 'time_asc', label: 'Giờ đi sớm nhất' },
+  { value: 'time_desc', label: 'Giờ đi muộn nhất' },
+  { value: 'price_asc', label: 'Giá thấp nhất' },
+  { value: 'price_desc', label: 'Giá cao nhất' },
+  { value: 'rating', label: 'Đánh giá tốt nhất' },
+];
 
 // Loading fallback component
 function SearchLoading() {
@@ -91,6 +109,9 @@ function SearchPageContent() {
     limousine: false,   // Limousine
   });
 
+  // Sort state
+  const [sortBy, setSortBy] = React.useState<SortOption>('default');
+
   // Load trips based on search params
   React.useEffect(() => {
     async function loadTrips() {
@@ -143,6 +164,30 @@ function SearchPageContent() {
     });
   }, [trips, timeSlots, priceRange, busTypes]);
 
+  // --- SORT LOGIC ---
+  const sortedTrips = React.useMemo(() => {
+    const sorted = [...filteredTrips];
+
+    switch (sortBy) {
+      case 'time_asc':
+        return sorted.sort((a, b) =>
+          new Date(a.departure_time).getTime() - new Date(b.departure_time).getTime()
+        );
+      case 'time_desc':
+        return sorted.sort((a, b) =>
+          new Date(b.departure_time).getTime() - new Date(a.departure_time).getTime()
+        );
+      case 'price_asc':
+        return sorted.sort((a, b) => a.route.base_price - b.route.base_price);
+      case 'price_desc':
+        return sorted.sort((a, b) => b.route.base_price - a.route.base_price);
+      case 'rating':
+        return sorted.sort((a, b) => b.bus.average_rating - a.bus.average_rating);
+      default:
+        return sorted;
+    }
+  }, [filteredTrips, sortBy]);
+
   // Reset all filters
   const resetFilters = () => {
     setTimeSlots({ earlyMorning: false, morning: false, afternoon: false, evening: false });
@@ -194,11 +239,27 @@ function SearchPageContent() {
               </span>
             </h1>
           </div>
-          {/* Quick Sort Mobile/Desktop */}
+          {/* Quick Sort Dropdown */}
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2 bg-white">
-              <ArrowUpDown className="h-4 w-4" /> Sắp xếp: Mặc định
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2 bg-white">
+                  <ArrowUpDown className="h-4 w-4" />
+                  Sắp xếp: {SORT_OPTIONS.find(o => o.value === sortBy)?.label}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {SORT_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    onClick={() => setSortBy(option.value)}
+                    className={sortBy === option.value ? 'bg-orange-50 text-orange-600' : ''}
+                  >
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -386,7 +447,7 @@ function SearchPageContent() {
             {/* Trip List */}
             {!loading &&
               !error &&
-              filteredTrips.map((trip) => (
+              sortedTrips.map((trip) => (
                 <TicketCard
                   key={trip.id}
                   trip={trip}
@@ -396,7 +457,7 @@ function SearchPageContent() {
                 />
               ))}
 
-            {!loading && !error && filteredTrips.length > 0 && (
+            {!loading && !error && sortedTrips.length > 0 && (
               <div className="pt-8 flex justify-center">
                 <Button variant="outline" className="w-full sm:w-auto">
                   Xem thêm chuyến xe khác

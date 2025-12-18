@@ -22,6 +22,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// --- Custom Components ---
+import { CountdownTimer } from "@/components/countdown-timer";
+
 // --- API & Types ---
 import { fetchMyBookings, isLoggedIn } from "@/lib/api";
 import { BookingDetail } from "@/lib/types";
@@ -56,7 +59,7 @@ export default function MyBookingsPage() {
     // Filter bookings by status
     const pendingBookings = bookings.filter((b) => b.status === "PENDING");
     const confirmedBookings = bookings.filter((b) => b.status === "CONFIRMED");
-    const cancelledBookings = bookings.filter((b) => b.status === "CANCELLED");
+    const cancelledBookings = bookings.filter((b) => b.status === "CANCELLED" || b.status === "EXPIRED");
 
     // Format date/time helpers
     const formatDate = (iso: string) => {
@@ -96,6 +99,12 @@ export default function MyBookingsPage() {
                         <XCircle className="w-3 h-3 mr-1" /> Đã hủy
                     </Badge>
                 );
+            case "EXPIRED":
+                return (
+                    <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200">
+                        <Clock className="w-3 h-3 mr-1" /> Hết hạn
+                    </Badge>
+                );
             default:
                 return <Badge variant="secondary">{status}</Badge>;
         }
@@ -131,7 +140,15 @@ export default function MyBookingsPage() {
                                     </h3>
                                     <p className="text-sm text-slate-500">{trip.bus.bus_type}</p>
                                 </div>
-                                <StatusBadge status={booking.status} />
+                                <div className="flex flex-col items-end gap-1">
+                                    <StatusBadge status={booking.status} />
+                                    {booking.status === "PENDING" && booking.expires_at && (
+                                        <CountdownTimer
+                                            expiresAt={booking.expires_at}
+                                            onExpire={() => window.location.reload()}
+                                        />
+                                    )}
+                                </div>
                             </div>
 
                             {/* Trip Details */}
@@ -204,12 +221,23 @@ export default function MyBookingsPage() {
         <div className="min-h-screen bg-slate-50 py-8 font-sans">
             <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                        <Ticket className="w-8 h-8 text-orange-600" />
-                        Vé của tôi
-                    </h1>
-                    <p className="text-slate-500 mt-2">Quản lý các vé xe đã đặt</p>
+                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+                            <Ticket className="w-8 h-8 text-orange-600" />
+                            Vé của tôi
+                        </h1>
+                        <p className="text-slate-500 mt-2">Quản lý các vé xe đã đặt</p>
+                    </div>
+
+                    {/* Batch Payment Button */}
+                    {pendingBookings.length > 1 && (
+                        <Link href={`/payment?booking_ids=${pendingBookings.map(b => b.id).join(',')}`}>
+                            <Button className="bg-orange-600 hover:bg-orange-700">
+                                Thanh toán tất cả ({pendingBookings.length} vé)
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Loading */}

@@ -81,9 +81,10 @@ export interface BookingDetail {
   pickup_point: RoutePoint;
   dropoff_point: RoutePoint;
   price_paid: number;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED';
   status_display: string;
   booking_time: string;
+  expires_at: string | null;
   has_review: boolean;
 }
 
@@ -145,4 +146,16 @@ export interface LoginResponse {
 export interface AuthTokens {
   access: string;
   refresh: string;
+}
+
+// --- Notifications ---
+export interface Notification {
+  id: number;
+  notification_type: 'BOOKING' | 'PAYMENT' | 'PROMO' | 'SYSTEM' | 'REMINDER';
+  type_display: string;
+  title: string;
+  message: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
 }

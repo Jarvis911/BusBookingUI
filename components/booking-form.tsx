@@ -49,7 +49,13 @@ export function BookingForm({ price, tripId, seatMap, pickupPoints, dropoffPoint
         }
     }
 
-    const totalPrice = selectedSeats.length * price
+    // Calculate surcharges from pickup and dropoff points
+    const selectedPickup = pickupPoints.find(p => p.id.toString() === pickup)
+    const selectedDropoff = dropoffPoints.find(p => p.id.toString() === dropoff)
+    const pickupSurcharge = selectedPickup?.surcharge || 0
+    const dropoffSurcharge = selectedDropoff?.surcharge || 0
+    const totalSurcharge = (Number(pickupSurcharge) + Number(dropoffSurcharge)) * selectedSeats.length
+    const totalPrice = (selectedSeats.length * price) + totalSurcharge
 
     // Handle booking submission
     const handleBooking = async () => {
@@ -68,19 +74,22 @@ export function BookingForm({ price, tripId, seatMap, pickupPoints, dropoffPoint
         setError(null)
 
         try {
-            // Book first seat (for now, we'll handle one booking at a time)
-            // In production, you might want to create a batch booking endpoint
-            const firstSeat = selectedSeats[0]
-            const result = await createBooking({
-                trip: tripId,
-                seat_number: firstSeat,
-                pickup_point: parseInt(pickup),
-                dropoff_point: parseInt(dropoff),
-            })
+            // Create bookings for all selected seats
+            const bookingIds: number[] = []
 
-            // Redirect to payment page with the booking ID
-            const bookingId = result.data.id
-            window.location.href = `/payment?booking_id=${bookingId}`
+            for (const seatNumber of selectedSeats) {
+                const result = await createBooking({
+                    trip: tripId,
+                    seat_number: seatNumber,
+                    pickup_point: parseInt(pickup),
+                    dropoff_point: parseInt(dropoff),
+                })
+                bookingIds.push(result.data.id)
+            }
+
+            // Redirect to payment page with all booking IDs
+            const bookingIdsParam = bookingIds.join(',')
+            window.location.href = `/payment?booking_ids=${bookingIdsParam}`
         } catch (err: any) {
             console.error("Booking failed:", err)
             setError(err.message || "Đặt vé thất bại. Vui lòng thử lại.")
@@ -202,8 +211,14 @@ export function BookingForm({ price, tripId, seatMap, pickupPoints, dropoffPoint
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-slate-500">Giá vé:</span>
-                                <span className="font-bold">{price.toLocaleString()}đ</span>
+                                <span className="font-bold">{price.toLocaleString()}đ × {selectedSeats.length}</span>
                             </div>
+                            {totalSurcharge > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Phụ thu điểm đón/trả:</span>
+                                    <span className="font-bold text-orange-500">+{totalSurcharge.toLocaleString()}đ</span>
+                                </div>
+                            )}
                             <Separator />
                             <div className="flex justify-between items-end gap-2">
                                 <span className="font-bold text-slate-900">Tổng cộng:</span>

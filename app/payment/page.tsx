@@ -13,26 +13,31 @@ import Link from "next/link"
 function PaymentPageContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
-    const bookingId = searchParams.get("booking_id")
+
+    // Support both single booking_id and multiple booking_ids
+    const bookingIdsParam = searchParams.get("booking_ids") || searchParams.get("booking_id")
+    const bookingIds = bookingIdsParam ? bookingIdsParam.split(',').map(id => parseInt(id.trim())) : []
 
     const [loading, setLoading] = React.useState(true)
     const [payment, setPayment] = React.useState<Payment | null>(null)
+    const [totalAmount, setTotalAmount] = React.useState(0)
     const [error, setError] = React.useState<string | null>(null)
     const [creatingPayment, setCreatingPayment] = React.useState(false)
 
     // Check for existing payment or create new one
     React.useEffect(() => {
         async function initPayment() {
-            if (!bookingId) {
+            if (bookingIds.length === 0) {
                 setError("Không tìm thấy thông tin booking")
                 setLoading(false)
                 return
             }
 
             try {
-                // First, check if there's already a payment for this booking
-                const existingPayment = await getBookingPayment(parseInt(bookingId))
+                // Check for existing payment on first booking
+                const existingPayment = await getBookingPayment(bookingIds[0])
                 setPayment(existingPayment)
+                setTotalAmount(existingPayment.amount)
             } catch (err: any) {
                 // No existing payment, we'll create one when user clicks pay
                 console.log("No existing payment found, will create on demand")
@@ -42,17 +47,19 @@ function PaymentPageContent() {
         }
 
         initPayment()
-    }, [bookingId])
+    }, [bookingIdsParam])
 
     const handleCreatePayment = async () => {
-        if (!bookingId) return
+        if (bookingIds.length === 0) return
 
         setCreatingPayment(true)
         setError(null)
 
         try {
-            const newPayment = await createMoMoPayment(parseInt(bookingId))
+            // Create payment for all bookings - backend calculates total amount
+            const newPayment = await createMoMoPayment(bookingIds)
             setPayment(newPayment)
+            setTotalAmount(newPayment.amount)
 
             // Redirect to MoMo payment URL
             if (newPayment.pay_url) {
@@ -220,7 +227,7 @@ function PaymentPageContent() {
                                     <Button
                                         className="w-full h-12 bg-pink-500 hover:bg-pink-600 text-white"
                                         onClick={handleCreatePayment}
-                                        disabled={creatingPayment || !bookingId}
+                                        disabled={creatingPayment || bookingIds.length === 0}
                                     >
                                         {creatingPayment ? (
                                             <>

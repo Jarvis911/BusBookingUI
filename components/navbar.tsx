@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Menu, Search, User, LogOut, Ticket, Phone, Bell, Settings } from "lucide-react"
+import { Menu, Search, User, LogOut, Ticket, Phone, Bell, Settings, CheckCheck, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -17,12 +17,22 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
+import { fetchNotifications, fetchUnreadNotificationCount, markNotificationRead, createNotification } from "@/lib/api"
+import { Notification } from "@/lib/types"
 
 export function Navbar() {
   const router = useRouter()
   const { user, isAuthenticated, logout, loading } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
+
+  // Notification state
+  const [notifications, setNotifications] = React.useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = React.useState(0)
+  const [notifLoading, setNotifLoading] = React.useState(false)
+  const [bellShaking, setBellShaking] = React.useState(false)
 
   const navLinks = [
     { name: "Trang chủ", href: "/" },
@@ -31,6 +41,89 @@ export function Navbar() {
     { name: "Tin tức", href: "/news" },
     { name: "Liên hệ", href: "/contact" },
   ]
+
+  // Fetch unread count on mount
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadNotificationCount().then(setUnreadCount).catch(console.error)
+    }
+  }, [isAuthenticated])
+
+  // Listen for login event to create greeting notification
+  React.useEffect(() => {
+    const handleUserLoggedIn = async (event: CustomEvent<{ username: string }>) => {
+      const { username } = event.detail
+
+      try {
+        // Create greeting notification
+        await createNotification(
+          `Chào mừng ${username}! 👋`,
+          'Chúc bạn có trải nghiệm đặt vé tuyệt vời tại DT Bus Lines!',
+          'SYSTEM',
+          '/my-bookings'
+        )
+
+        // Update unread count
+        setUnreadCount(prev => prev + 1)
+
+        // Trigger bell shake animation
+        setBellShaking(true)
+        setTimeout(() => setBellShaking(false), 2000)
+
+        // Show toast popup
+        toast.success(`Chào mừng ${username}! 👋`, {
+          description: 'Chúc bạn có trải nghiệm đặt vé tuyệt vời!',
+        })
+      } catch (err) {
+        console.error('Failed to create greeting notification:', err)
+      }
+    }
+
+    window.addEventListener('user-logged-in', handleUserLoggedIn as EventListener)
+    return () => window.removeEventListener('user-logged-in', handleUserLoggedIn as EventListener)
+  }, [])
+
+  // Fetch notifications when dropdown opens
+  const handleNotifOpen = async (open: boolean) => {
+    if (open && isAuthenticated) {
+      setNotifLoading(true)
+      try {
+        const data = await fetchNotifications()
+        setNotifications(data)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setNotifLoading(false)
+      }
+    }
+  }
+
+  // Mark all as read
+  const handleMarkAllRead = async () => {
+    try {
+      await markNotificationRead(undefined, true)
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+      setUnreadCount(0)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  // Mark single notification as read
+  const handleNotifClick = async (notif: Notification) => {
+    if (!notif.is_read) {
+      try {
+        await markNotificationRead(notif.id)
+        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n))
+        setUnreadCount(prev => Math.max(0, prev - 1))
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    if (notif.link) {
+      router.push(notif.link)
+    }
+  }
 
   const handleLogout = () => {
     logout()
@@ -44,6 +137,20 @@ export function Navbar() {
 
   const getInitials = (name: string) => {
     return name.slice(0, 2).toUpperCase()
+  }
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const mins = Math.floor(diff / 60000)
+    const hours = Math.floor(mins / 60)
+    const days = Math.floor(hours / 24)
+
+    if (mins < 1) return "Vừa xong"
+    if (mins < 60) return `${mins} phút trước`
+    if (hours < 24) return `${hours} giờ trước`
+    return `${days} ngày trước`
   }
 
   return (
@@ -89,10 +196,65 @@ export function Navbar() {
           {!loading && isAuthenticated && user ? (
             // --- LOGGED IN STATE ---
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative text-slate-500">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-              </Button>
+              {/* Notification Dropdown */}
+              <DropdownMenu onOpenChange={handleNotifOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className={`relative text-slate-500 ${bellShaking ? 'animate-bell-shake' : ''}`}>
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80" align="end" forceMount>
+                  <DropdownMenuLabel className="flex items-center justify-between">
+                    <span>Thông báo</span>
+                    {unreadCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs text-orange-600 hover:text-orange-700"
+                        onClick={handleMarkAllRead}
+                      >
+                        <CheckCheck className="h-3 w-3 mr-1" />
+                        Đọc tất cả
+                      </Button>
+                    )}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <ScrollArea className="h-[300px]">
+                    {notifLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                        <Bell className="h-10 w-10 mb-2" />
+                        <p className="text-sm">Không có thông báo</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <DropdownMenuItem
+                          key={notif.id}
+                          className={`flex flex-col items-start p-3 cursor-pointer ${!notif.is_read ? 'bg-orange-50' : ''}`}
+                          onClick={() => handleNotifClick(notif)}
+                        >
+                          <div className="flex items-start gap-2 w-full">
+                            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!notif.is_read ? 'bg-orange-500' : 'bg-slate-200'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 truncate">{notif.title}</p>
+                              <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
+                              <p className="text-[10px] text-slate-400 mt-1">{formatTime(notif.created_at)}</p>
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </ScrollArea>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

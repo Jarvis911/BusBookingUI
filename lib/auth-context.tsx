@@ -35,6 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await apiLogin(username, password)
         setUser(response.user)
         localStorage.setItem("user", JSON.stringify(response.user))
+
+        // Dispatch custom event to trigger bell shake and notification popup
+        window.dispatchEvent(new CustomEvent('user-logged-in', {
+            detail: { username: response.user.username }
+        }))
     }
 
     const logout = () => {
