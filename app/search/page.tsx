@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Bus,
   MapPin,
@@ -37,17 +38,42 @@ import { fetchTrips } from "@/lib/api";
 import { Trip } from "@/lib/types";
 
 export default function SearchPage() {
+  const searchParams = useSearchParams();
   const [trips, setTrips] = React.useState<Trip[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Load trips on mount
+  // Get search params
+  const origin = searchParams.get('origin') || undefined;
+  const destination = searchParams.get('destination') || undefined;
+  const date = searchParams.get('date') || undefined;
+
+  // --- FILTER STATE ---
+  // Time slot filters (24h format ranges)
+  const [timeSlots, setTimeSlots] = React.useState({
+    earlyMorning: false,  // 00:00 - 06:00
+    morning: false,       // 06:00 - 12:00
+    afternoon: false,     // 12:00 - 18:00
+    evening: false,       // 18:00 - 24:00
+  });
+
+  // Price range filter (in VND, max 1,000,000)
+  const [priceRange, setPriceRange] = React.useState<[number, number]>([0, 1000000]);
+
+  // Bus type filters
+  const [busTypes, setBusTypes] = React.useState({
+    gheNgoi: false,     // Ghế ngồi
+    giuongNam: false,   // Giường nằm
+    limousine: false,   // Limousine
+  });
+
+  // Load trips based on search params
   React.useEffect(() => {
     async function loadTrips() {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchTrips();
+        const data = await fetchTrips({ origin, destination, date });
         setTrips(data);
       } catch (err) {
         console.error("Failed to fetch trips:", err);
@@ -57,7 +83,48 @@ export default function SearchPage() {
       }
     }
     loadTrips();
-  }, []);
+  }, [origin, destination, date]);
+
+  // --- FILTER LOGIC ---
+  const filteredTrips = React.useMemo(() => {
+    return trips.filter((trip) => {
+      // Time slot filter
+      const hasTimeFilter = timeSlots.earlyMorning || timeSlots.morning || timeSlots.afternoon || timeSlots.evening;
+      if (hasTimeFilter) {
+        const departureHour = new Date(trip.departure_time).getHours();
+        const matchesTime =
+          (timeSlots.earlyMorning && departureHour >= 0 && departureHour < 6) ||
+          (timeSlots.morning && departureHour >= 6 && departureHour < 12) ||
+          (timeSlots.afternoon && departureHour >= 12 && departureHour < 18) ||
+          (timeSlots.evening && departureHour >= 18 && departureHour < 24);
+        if (!matchesTime) return false;
+      }
+
+      // Price range filter
+      const price = trip.route.base_price;
+      if (price < priceRange[0] || price > priceRange[1]) return false;
+
+      // Bus type filter
+      const hasBusTypeFilter = busTypes.gheNgoi || busTypes.giuongNam || busTypes.limousine;
+      if (hasBusTypeFilter) {
+        const busType = trip.bus.bus_type.toLowerCase();
+        const matchesBusType =
+          (busTypes.gheNgoi && busType.includes('ghế')) ||
+          (busTypes.giuongNam && busType.includes('giường')) ||
+          (busTypes.limousine && busType.includes('limousine'));
+        if (!matchesBusType) return false;
+      }
+
+      return true;
+    });
+  }, [trips, timeSlots, priceRange, busTypes]);
+
+  // Reset all filters
+  const resetFilters = () => {
+    setTimeSlots({ earlyMorning: false, morning: false, afternoon: false, evening: false });
+    setPriceRange([0, 1000000]);
+    setBusTypes({ gheNgoi: false, giuongNam: false, limousine: false });
+  };
 
   // Calculate available seats
   const getAvailableSeats = (trip: Trip) => {
@@ -80,6 +147,12 @@ export default function SearchPage() {
     return `${h}h ${m > 0 ? `${m}m` : ""}`.trim();
   };
 
+  // Format price for display
+  const formatPrice = (value: number) => {
+    if (value >= 1000000) return '1.000.000đ+';
+    return `${value.toLocaleString('vi-VN')}đ`;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 py-8 font-sans text-slate-900">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -93,7 +166,7 @@ export default function SearchPage() {
             <h1 className="text-2xl font-bold flex items-center gap-2">
               Danh sách chuyến xe
               <span className="ml-3 text-base font-normal text-slate-500">
-                ({trips.length} kết quả)
+                ({filteredTrips.length} kết quả)
               </span>
             </h1>
           </div>
@@ -111,7 +184,10 @@ export default function SearchPage() {
             <div className="rounded-xl border bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-lg">Bộ lọc tìm kiếm</h3>
-                <button className="text-xs text-orange-600 font-semibold hover:underline">
+                <button
+                  className="text-xs text-orange-600 font-semibold hover:underline"
+                  onClick={resetFilters}
+                >
                   Bỏ lọc
                 </button>
               </div>
@@ -129,26 +205,50 @@ export default function SearchPage() {
                   <AccordionContent>
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="sang" />
-                        <label htmlFor="sang" className="text-sm">
+                        <Checkbox
+                          id="sang"
+                          checked={timeSlots.earlyMorning}
+                          onCheckedChange={(checked) =>
+                            setTimeSlots(prev => ({ ...prev, earlyMorning: !!checked }))
+                          }
+                        />
+                        <label htmlFor="sang" className="text-sm cursor-pointer">
                           Sáng sớm (00:00 - 06:00)
                         </label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="sang2" />
-                        <label htmlFor="sang2" className="text-sm">
+                        <Checkbox
+                          id="sang2"
+                          checked={timeSlots.morning}
+                          onCheckedChange={(checked) =>
+                            setTimeSlots(prev => ({ ...prev, morning: !!checked }))
+                          }
+                        />
+                        <label htmlFor="sang2" className="text-sm cursor-pointer">
                           Buổi sáng (06:00 - 12:00)
                         </label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="chieu" />
-                        <label htmlFor="chieu" className="text-sm">
+                        <Checkbox
+                          id="chieu"
+                          checked={timeSlots.afternoon}
+                          onCheckedChange={(checked) =>
+                            setTimeSlots(prev => ({ ...prev, afternoon: !!checked }))
+                          }
+                        />
+                        <label htmlFor="chieu" className="text-sm cursor-pointer">
                           Buổi chiều (12:00 - 18:00)
                         </label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="toi" />
-                        <label htmlFor="toi" className="text-sm">
+                        <Checkbox
+                          id="toi"
+                          checked={timeSlots.evening}
+                          onCheckedChange={(checked) =>
+                            setTimeSlots(prev => ({ ...prev, evening: !!checked }))
+                          }
+                        />
+                        <label htmlFor="toi" className="text-sm cursor-pointer">
                           Buổi tối (18:00 - 24:00)
                         </label>
                       </div>
@@ -164,14 +264,15 @@ export default function SearchPage() {
                   <AccordionContent>
                     <div className="pt-4 px-2">
                       <Slider
-                        defaultValue={[0, 100]}
-                        max={100}
-                        step={1}
+                        value={priceRange}
+                        onValueChange={(value) => setPriceRange(value as [number, number])}
+                        max={1000000}
+                        step={50000}
                         className="mb-4"
                       />
                       <div className="flex justify-between text-xs font-medium text-slate-500">
-                        <span>0đ</span>
-                        <span>1.000.000đ+</span>
+                        <span>{formatPrice(priceRange[0])}</span>
+                        <span>{formatPrice(priceRange[1])}</span>
                       </div>
                     </div>
                   </AccordionContent>
@@ -185,20 +286,38 @@ export default function SearchPage() {
                   <AccordionContent>
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="ghe" />
-                        <label htmlFor="ghe" className="text-sm">
+                        <Checkbox
+                          id="ghe"
+                          checked={busTypes.gheNgoi}
+                          onCheckedChange={(checked) =>
+                            setBusTypes(prev => ({ ...prev, gheNgoi: !!checked }))
+                          }
+                        />
+                        <label htmlFor="ghe" className="text-sm cursor-pointer">
                           Ghế ngồi
                         </label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="giuong" />
-                        <label htmlFor="giuong" className="text-sm">
+                        <Checkbox
+                          id="giuong"
+                          checked={busTypes.giuongNam}
+                          onCheckedChange={(checked) =>
+                            setBusTypes(prev => ({ ...prev, giuongNam: !!checked }))
+                          }
+                        />
+                        <label htmlFor="giuong" className="text-sm cursor-pointer">
                           Giường nằm
                         </label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Checkbox id="limousine" />
-                        <label htmlFor="limousine" className="text-sm">
+                        <Checkbox
+                          id="limousine"
+                          checked={busTypes.limousine}
+                          onCheckedChange={(checked) =>
+                            setBusTypes(prev => ({ ...prev, limousine: !!checked }))
+                          }
+                        />
+                        <label htmlFor="limousine" className="text-sm cursor-pointer">
                           Limousine
                         </label>
                       </div>
@@ -234,7 +353,7 @@ export default function SearchPage() {
             )}
 
             {/* Empty State */}
-            {!loading && !error && trips.length === 0 && (
+            {!loading && !error && filteredTrips.length === 0 && (
               <div className="rounded-xl border bg-white p-8 text-center">
                 <p className="text-slate-500">Không tìm thấy chuyến xe nào.</p>
               </div>
@@ -243,7 +362,7 @@ export default function SearchPage() {
             {/* Trip List */}
             {!loading &&
               !error &&
-              trips.map((trip) => (
+              filteredTrips.map((trip) => (
                 <TicketCard
                   key={trip.id}
                   trip={trip}
@@ -253,7 +372,7 @@ export default function SearchPage() {
                 />
               ))}
 
-            {!loading && !error && trips.length > 0 && (
+            {!loading && !error && filteredTrips.length > 0 && (
               <div className="pt-8 flex justify-center">
                 <Button variant="outline" className="w-full sm:w-auto">
                   Xem thêm chuyến xe khác

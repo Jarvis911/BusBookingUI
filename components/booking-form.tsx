@@ -91,10 +91,10 @@ export function BookingForm({ price, tripId, seatMap, pickupPoints, dropoffPoint
 
     return (
         <div className="bg-slate-50 p-4 sm:p-6 border-t animate-in fade-in zoom-in-95 duration-300">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-19 gap-8">
 
                 {/* --- COL 1: SEAT SELECTION (5/12 columns) --- */}
-                <div className="lg:col-span-5 flex flex-col items-center">
+                <div className="lg:col-span-7 flex flex-col items-center">
                     <h4 className="font-bold text-slate-900 mb-4 w-full text-left">Chọn ghế</h4>
 
                     {/* Chú thích màu */}
@@ -127,7 +127,7 @@ export function BookingForm({ price, tripId, seatMap, pickupPoints, dropoffPoint
                 </div>
 
                 {/* --- COL 2: PICKUP/DROPOFF (4/12 columns) --- */}
-                <div className="lg:col-span-4 border-l pl-0 lg:pl-8 border-slate-200">
+                <div className="lg:col-span-7 border-l pl-0 lg:pl-8 border-slate-200">
                     <h4 className="font-bold text-slate-900 mb-4">Điểm đón trả</h4>
 
                     <ScrollArea className="h-[400px] pr-4">
@@ -188,7 +188,7 @@ export function BookingForm({ price, tripId, seatMap, pickupPoints, dropoffPoint
                 </div>
 
                 {/* --- COL 3: SUMMARY (3/12 columns) --- */}
-                <div className="lg:col-span-3 flex flex-col justify-between bg-white rounded-xl border p-5 h-fit shadow-sm">
+                <div className="lg:col-span-5 flex flex-col justify-between bg-white rounded-xl border p-5 h-fit shadow-sm">
                     <div>
                         <h4 className="font-bold text-lg mb-4">Thông tin đặt vé</h4>
                         <div className="space-y-4">
@@ -205,7 +205,7 @@ export function BookingForm({ price, tripId, seatMap, pickupPoints, dropoffPoint
                                 <span className="font-bold">{price.toLocaleString()}đ</span>
                             </div>
                             <Separator />
-                            <div className="flex justify-between items-end">
+                            <div className="flex justify-between items-end gap-2">
                                 <span className="font-bold text-slate-900">Tổng cộng:</span>
                                 <span className="text-2xl font-bold text-orange-600">{totalPrice.toLocaleString()}đ</span>
                             </div>

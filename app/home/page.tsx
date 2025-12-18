@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Popover,
@@ -36,9 +35,10 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Combobox } from "@/components/ui/combobox"
 
 // --- API Imports ---
-import { fetchRoutes } from "@/lib/api"
+import { fetchRoutes, fetchProvinces, Province } from "@/lib/api"
 import { Route } from "@/lib/types"
 
 export default function HomePage() {
@@ -51,19 +51,34 @@ export default function HomePage() {
   const [routes, setRoutes] = React.useState<Route[]>([])
   const [loading, setLoading] = React.useState(true)
 
-  // Fetch routes on mount
+  // Provinces for combobox
+  const [provinces, setProvinces] = React.useState<Province[]>([])
+  const [provincesLoading, setProvincesLoading] = React.useState(true)
+
+  // Province options for combobox
+  const provinceOptions = React.useMemo(() =>
+    provinces.map(p => ({ value: p.name, label: p.name })),
+    [provinces]
+  )
+
+  // Fetch routes and provinces on mount
   React.useEffect(() => {
-    async function loadRoutes() {
+    async function loadData() {
       try {
-        const data = await fetchRoutes()
-        setRoutes(data)
+        const [routesData, provincesData] = await Promise.all([
+          fetchRoutes(),
+          fetchProvinces()
+        ])
+        setRoutes(routesData)
+        setProvinces(provincesData)
       } catch (err) {
-        console.error("Failed to fetch routes:", err)
+        console.error("Failed to fetch data:", err)
       } finally {
         setLoading(false)
+        setProvincesLoading(false)
       }
     }
-    loadRoutes()
+    loadData()
   }, [])
 
   // Handle search
@@ -79,7 +94,7 @@ export default function HomePage() {
   const routeImages = [
     "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1000&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=1000&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1559038465-e92fa44a3626?q=80&w=1000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=1000&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=1000&auto=format&fit=crop",
   ]
 
@@ -127,26 +142,29 @@ export default function HomePage() {
             {/* Nơi đi */}
             <div className="col-span-1 md:col-span-3 space-y-2">
               <Label className="text-xs font-semibold text-slate-500 uppercase">Điểm đi</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input type="text" placeholder="Tỉnh/Thành phố" className="pl-9 h-11" value={origin} onChange={(e) => setOrigin(e.target.value)} />
-              </div>
-            </div>
-
-            {/* Swap Button Visual */}
-            <div className="hidden md:flex col-span-1 justify-center pb-1">
-              <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
-                <ArrowRight className="h-4 w-4 text-slate-400" />
-              </Button>
+              <Combobox
+                options={provinceOptions}
+                value={origin}
+                onValueChange={setOrigin}
+                placeholder="Chọn tỉnh/thành phố"
+                searchPlaceholder="Tìm tỉnh/thành phố..."
+                emptyText="Không tìm thấy."
+                disabled={provincesLoading}
+              />
             </div>
 
             {/* Nơi đến */}
             <div className="col-span-1 md:col-span-3 space-y-2">
               <Label className="text-xs font-semibold text-slate-500 uppercase">Điểm đến</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input type="text" placeholder="Tỉnh/Thành phố" className="pl-9 h-11" value={destination} onChange={(e) => setDestination(e.target.value)} />
-              </div>
+              <Combobox
+                options={provinceOptions}
+                value={destination}
+                onValueChange={setDestination}
+                placeholder="Chọn tỉnh/thành phố"
+                searchPlaceholder="Tìm tỉnh/thành phố..."
+                emptyText="Không tìm thấy."
+                disabled={provincesLoading}
+              />
             </div>
 
             {/* Ngày đi (Date Picker Shadcn) */}
@@ -178,10 +196,10 @@ export default function HomePage() {
             </div>
 
             {/* Số khách (Select Shadcn) */}
-            <div className="col-span-1 md:col-span-2 space-y-2">
+            <div className="col-span-1 md:col-span-3 space-y-2">
               <Label className="text-xs font-semibold text-slate-500 uppercase">Hành khách</Label>
               <Select defaultValue="1">
-                <SelectTrigger className="h-11">
+                <SelectTrigger className="w-full h-11!">
                   <SelectValue placeholder="Số khách" />
                 </SelectTrigger>
                 <SelectContent>

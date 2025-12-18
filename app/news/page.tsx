@@ -93,14 +93,26 @@ export default function NewsPage() {
     return (
         <div className="min-h-screen bg-slate-50 font-sans">
             {/* Hero Banner */}
-            <div className="bg-gradient-to-r from-orange-600 to-orange-500 text-white py-16">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+            <div className="relative text-white py-16 overflow-hidden">
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                    <img
+                        src="https://images.unsplash.com/photo-1570125909232-eb263c188f7e?q=80&w=2070&auto=format&fit=crop"
+                        alt="Bus Background"
+                        className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 to-slate-900/40" />
+                </div>
+
+                {/* Content */}
+                <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
                     <h1 className="text-4xl font-bold mb-4">Tin tức & Khuyến mãi</h1>
                     <p className="text-orange-100 text-lg max-w-2xl mx-auto">
                         Cập nhật những thông tin mới nhất về các chương trình ưu đãi, hướng dẫn và mẹo du lịch
                     </p>
                 </div>
             </div>
+
 
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
                 {/* Search & Filter */}

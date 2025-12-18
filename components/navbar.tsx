@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context"
 export function Navbar() {
   const router = useRouter()
   const { user, isAuthenticated, logout, loading } = useAuth()
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
 
   const navLinks = [
     { name: "Trang chủ", href: "/" },
@@ -33,7 +34,12 @@ export function Navbar() {
 
   const handleLogout = () => {
     logout()
+    setMobileMenuOpen(false)
     router.push("/")
+  }
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false)
   }
 
   const getInitials = (name: string) => {
@@ -46,12 +52,14 @@ export function Navbar() {
 
         {/* --- LEFT: LOGO --- */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-600 text-white">
-              <span className="text-xl font-bold">V</span>
-            </div>
-            <span className="hidden text-xl font-bold text-slate-900 sm:inline-block">
-              Vexere<span className="text-orange-600">Clone</span>
+          <Link href="/" className="flex items-center gap-4">
+            <img
+              src="/logo.png"
+              alt="Duc Tri Bus Lines"
+              className="h-13 w-13 rounded-lg object-cover"
+            />
+            <span className="hidden text-2xl tracking-wide text-slate-900 sm:inline-block font-[family-name:var(--font-bebas)]">
+              DT BUS LINES
             </span>
           </Link>
 
@@ -135,41 +143,108 @@ export function Navbar() {
           ) : null}
 
           {/* --- MOBILE MENU (Sheet) --- */}
-          <Sheet>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-              <div className="flex flex-col gap-6 py-6">
-                <Link href="/" className="flex items-center gap-2">
-                  <span className="text-xl font-bold">Vexere Clone</span>
-                </Link>
-                <nav className="flex flex-col gap-4">
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.name}
-                      href={link.href}
-                      className="text-lg font-medium text-slate-900 hover:text-orange-600"
-                    >
-                      {link.name}
-                    </Link>
-                  ))}
-                </nav>
-                <div className="flex flex-col gap-3 mt-4 border-t pt-6">
-                  {!isAuthenticated ? (
+            <SheetContent side="right" className="w-[300px] sm:w-[350px] p-0">
+              <div className="flex flex-col h-full">
+
+                {/* Header */}
+                <div className="flex items-center gap-3 p-6 border-b bg-slate-50">
+                  <img
+                    src="/logo.png"
+                    alt="Duc Tri Bus Lines"
+                    className="h-10 w-10 rounded-lg object-cover"
+                  />
+                  <span className="text-xl tracking-wide text-slate-900 font-[family-name:var(--font-bebas)]">DT BUS LINES</span>
+                </div>
+
+                {/* User Info (if logged in) */}
+                {isAuthenticated && user && (
+                  <div className="p-4 border-b bg-gradient-to-r from-orange-50 to-white">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12 border-2 border-orange-200">
+                        <AvatarImage src={`https://ui-avatars.com/api/?name=${user.username}`} alt={user.username} />
+                        <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold text-slate-900">{user.username}</p>
+                        <p className="text-sm text-slate-500">{user.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Links */}
+                <nav className="flex-1 overflow-y-auto p-4">
+                  <div className="space-y-1">
+                    {navLinks.map((link) => (
+                      <Link
+                        key={link.name}
+                        href={link.href}
+                        onClick={closeMobileMenu}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                      >
+                        <span className="text-base font-medium">{link.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+
+                  {/* Logged in user actions */}
+                  {isAuthenticated && user && (
                     <>
-                      <Button variant="outline" className="w-full justify-start" asChild>
-                        <Link href="/login">Đăng nhập</Link>
-                      </Button>
-                      <Button className="w-full justify-start bg-orange-600 hover:bg-orange-700" asChild>
-                        <Link href="/register">Đăng ký tài khoản</Link>
-                      </Button>
+                      <div className="my-4 border-t" />
+                      <div className="space-y-1">
+                        <Link
+                          href="/my-bookings"
+                          onClick={closeMobileMenu}
+                          className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                        >
+                          <Ticket className="h-5 w-5" />
+                          <span className="text-base font-medium">Vé của tôi</span>
+                          <Badge className="ml-auto bg-orange-600 h-5 px-1.5 text-xs">Mới</Badge>
+                        </Link>
+                        <Link
+                          href="/settings"
+                          onClick={closeMobileMenu}
+                          className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                        >
+                          <Settings className="h-5 w-5" />
+                          <span className="text-base font-medium">Cài đặt</span>
+                        </Link>
+                      </div>
                     </>
+                  )}
+                </nav>
+
+                {/* Footer Actions */}
+                <div className="border-t p-4 space-y-3 bg-slate-50">
+                  {/* Hotline */}
+                  <div className="flex items-center justify-center gap-2 py-3 rounded-lg bg-white border text-slate-700">
+                    <Phone className="h-5 w-5 text-orange-600" />
+                    <span className="font-semibold">1900 888 888</span>
+                  </div>
+
+                  {!isAuthenticated ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link href="/login" onClick={closeMobileMenu}>Đăng nhập</Link>
+                      </Button>
+                      <Button className="w-full bg-orange-600 hover:bg-orange-700" asChild>
+                        <Link href="/register" onClick={closeMobileMenu}>Đăng ký</Link>
+                      </Button>
+                    </div>
                   ) : (
-                    <Button variant="destructive" className="w-full justify-start" onClick={handleLogout}>
+                    <Button
+                      variant="outline"
+                      className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
                       Đăng xuất
                     </Button>
                   )}

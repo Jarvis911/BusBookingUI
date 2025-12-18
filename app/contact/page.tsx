@@ -90,8 +90,19 @@ export default function ContactPage() {
     return (
         <div className="min-h-screen bg-slate-50 font-sans">
             {/* Hero */}
-            <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white py-16">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+            <div className="relative text-white py-16 overflow-hidden">
+                {/* Background Image */}
+                <div className="absolute inset-0">
+                    <img
+                        src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2070&auto=format&fit=crop"
+                        alt="Contact Background"
+                        className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 to-slate-800/70" />
+                </div>
+
+                {/* Content */}
+                <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
                     <h1 className="text-4xl font-bold mb-4">Liên hệ với chúng tôi</h1>
                     <p className="text-slate-300 text-lg max-w-2xl mx-auto">
                         Đội ngũ hỗ trợ khách hàng luôn sẵn sàng giải đáp mọi thắc mắc của bạn
@@ -124,7 +135,7 @@ export default function ContactPage() {
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-slate-900">Email</h3>
-                                        <p className="text-slate-600">support@vexereclone.vn</p>
+                                        <p className="text-slate-600">support@dtbuslines.vn</p>
                                         <p className="text-sm text-slate-500">Phản hồi trong 24h</p>
                                     </div>
                                 </div>

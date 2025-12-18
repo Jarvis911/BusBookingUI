@@ -2,6 +2,44 @@ import { Trip, Booking, CreateBookingInput, Payment, LoginResponse, Route, BusDe
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
+// ============================================
+// VIETNAM PROVINCES API (External)
+// ============================================
+
+export interface Province {
+  id: string;
+  name: string;
+  type: number;
+  typeText: string;
+  slug: string;
+}
+
+interface ProvinceApiResponse {
+  total: number;
+  data: Province[];
+  code: string;
+  message: string | null;
+}
+
+export async function fetchProvinces(): Promise<Province[]> {
+  try {
+    const response = await fetch('https://open.oapi.vn/location/provinces?size=63', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch provinces');
+    }
+    
+    const data: ProvinceApiResponse = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Failed to fetch provinces:', error);
+    return [];
+  }
+}
+
 // --- Helper: Get stored auth token ---
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
