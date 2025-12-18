@@ -5,6 +5,7 @@ import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { AuthProvider } from "@/lib/auth-context";
 import { ChatBot } from "@/components/chat-bot";
+import { Toaster } from "@/components/ui/sonner";
 
 const quicksand = Quicksand({
   subsets: ["latin", "vietnamese"],
@@ -36,6 +37,7 @@ export default function RootLayout({
           <Navbar />
           {children}
           <ChatBot />
+          <Toaster />
         </AuthProvider>
       </body>
     </html>

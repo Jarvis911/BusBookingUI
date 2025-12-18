@@ -51,8 +51,9 @@ export function Navbar() {
 
   // Listen for login event to create greeting notification
   React.useEffect(() => {
-    const handleUserLoggedIn = async (event: CustomEvent<{ username: string }>) => {
-      const { username } = event.detail
+    const handleUserLoggedIn = async (event: Event) => {
+      const customEvent = event as CustomEvent<{ username: string }>
+      const { username } = customEvent.detail
 
       try {
         // Create greeting notification
