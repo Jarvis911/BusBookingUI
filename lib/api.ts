@@ -1,6 +1,6 @@
 import { Trip, Booking, CreateBookingInput, Payment, LoginResponse, Route, BusDetail, BusAmenity, BookingDetail, Review, CreateReviewInput, Notification } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://b5a57a7ee492.ngrok-free.app/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://502778a7bb06.ngrok-free.app/api/v1';
 
 // ============================================
 // VIETNAM PROVINCES API (External)

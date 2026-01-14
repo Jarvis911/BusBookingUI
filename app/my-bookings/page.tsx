@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // --- Custom Components ---
 import { CountdownTimer } from "@/components/countdown-timer";
+import { RatingModal } from "@/components/modals/rating-modal";
 
 // --- API & Types ---
 import { fetchMyBookings, isLoggedIn } from "@/lib/api";
@@ -33,6 +34,28 @@ export default function MyBookingsPage() {
     const [bookings, setBookings] = React.useState<BookingDetail[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+
+    // Rating modal state
+    const [isRatingModalOpen, setIsRatingModalOpen] = React.useState(false);
+    const [selectedBooking, setSelectedBooking] = React.useState<BookingDetail | null>(null);
+
+    // Handler to open rating modal
+    const handleOpenRating = (booking: BookingDetail) => {
+        console.log("handleOpenRating called with booking:", booking);
+        setSelectedBooking(booking);
+        setIsRatingModalOpen(true);
+    };
+
+    // Handler when review is successfully submitted
+    const handleReviewSuccess = async () => {
+        // Refresh bookings list to update has_review status
+        try {
+            const data = await fetchMyBookings();
+            setBookings(data);
+        } catch (err) {
+            console.error("Failed to refresh bookings:", err);
+        }
+    };
 
     React.useEffect(() => {
         async function loadBookings() {
@@ -114,6 +137,9 @@ export default function MyBookingsPage() {
     const BookingCard = ({ booking }: { booking: BookingDetail }) => {
         const { trip, pickup_point, dropoff_point } = booking;
 
+        // Debug log
+        console.log("Booking:", booking.id, "Status:", booking.status, "has_review:", booking.has_review);
+
         return (
             <Card className="overflow-hidden hover:shadow-md transition-shadow">
                 <CardContent className="p-0">
@@ -188,7 +214,12 @@ export default function MyBookingsPage() {
                                         </Link>
                                     )}
                                     {booking.status === "CONFIRMED" && !booking.has_review && (
-                                        <Button size="sm" variant="outline" className="text-orange-600 border-orange-200">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                            onClick={() => handleOpenRating(booking)}
+                                        >
                                             <Star className="w-4 h-4 mr-1" /> Đánh giá
                                         </Button>
                                     )}
@@ -325,6 +356,14 @@ export default function MyBookingsPage() {
                     </Tabs>
                 )}
             </div>
+
+            {/* Rating Modal */}
+            <RatingModal
+                isOpen={isRatingModalOpen}
+                onClose={() => setIsRatingModalOpen(false)}
+                booking={selectedBooking}
+                onSuccess={handleReviewSuccess}
+            />
         </div>
     );
 }
