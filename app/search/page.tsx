@@ -209,6 +209,16 @@ function SearchPageContent() {
     });
   };
 
+  // Format date from ISO string
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   // Format duration
   const formatDuration = (hours: number) => {
     const h = Math.floor(hours);
@@ -453,6 +463,7 @@ function SearchPageContent() {
                   trip={trip}
                   availableSeats={getAvailableSeats(trip)}
                   formatTime={formatTime}
+                  formatDate={formatDate}
                   formatDuration={formatDuration}
                 />
               ))}
@@ -476,10 +487,11 @@ interface TicketCardProps {
   trip: Trip;
   availableSeats: number;
   formatTime: (iso: string) => string;
+  formatDate: (iso: string) => string;
   formatDuration: (hours: number) => string;
 }
 
-function TicketCard({ trip, availableSeats, formatTime, formatDuration }: TicketCardProps) {
+function TicketCard({ trip, availableSeats, formatTime, formatDate, formatDuration }: TicketCardProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isBookingOpen, setIsBookingOpen] = React.useState(false);
 
@@ -543,6 +555,9 @@ function TicketCard({ trip, availableSeats, formatTime, formatDuration }: Ticket
               <div className="text-xl font-bold text-slate-800">
                 {startTime}
               </div>
+              <div className="text-xs font-medium text-orange-600">
+                {formatDate(trip.departure_time)}
+              </div>
               <div className="text-xs text-slate-500 mt-1 max-w-[100px] truncate">
                 {pickupPoints[0]?.name || route.origin}
               </div>
@@ -559,6 +574,9 @@ function TicketCard({ trip, availableSeats, formatTime, formatDuration }: Ticket
             <div className="text-right relative z-10">
               <div className="text-xl font-bold text-slate-800">
                 {endTime}
+              </div>
+              <div className="text-xs font-medium text-orange-600">
+                {formatDate(trip.arrival_time)}
               </div>
               <div className="text-xs text-slate-500 mt-1 max-w-[100px] truncate">
                 {dropoffPoints[0]?.name || route.destination}

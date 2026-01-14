@@ -239,8 +239,8 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {routes.slice(0, 4).map((route, idx) => (
-              <Card key={route.id} className="group overflow-hidden border-0 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl cursor-pointer" onClick={() => router.push(`/search?origin=${route.origin}&destination=${route.destination}`)}>
-                <div className="relative h-48 overflow-hidden">
+              <Card key={route.id} className="group overflow-hidden border-0 shadow-md transition-all hover:-translate-y-1 hover:shadow-xl cursor-pointer pt-0" onClick={() => router.push(`/search?origin=${route.origin}&destination=${route.destination}`)}>
+                <div className="relative h-48 overflow-hidden ">
                   <img src={routeImages[idx % routeImages.length]} alt="Route" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                   <div className="absolute top-3 right-3">
                     <Badge variant="secondary" className="backdrop-blur-md bg-white/90">{Math.floor(route.duration_hours)}h {Math.round((route.duration_hours % 1) * 60)}m</Badge>
