@@ -41,8 +41,8 @@ import {
 import { BookingForm } from "@/components/booking-form";
 
 // --- API Imports ---
-import { fetchTrips } from "@/lib/api";
-import { Trip } from "@/lib/types";
+import { fetchTrips, fetchReviews } from "@/lib/api";
+import { Trip, Review } from "@/lib/types";
 
 // Sort options
 type SortOption = 'default' | 'price_asc' | 'price_desc' | 'time_asc' | 'time_desc' | 'rating';
@@ -494,6 +494,34 @@ interface TicketCardProps {
 function TicketCard({ trip, availableSeats, formatTime, formatDate, formatDuration }: TicketCardProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isBookingOpen, setIsBookingOpen] = React.useState(false);
+  const [reviews, setReviews] = React.useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = React.useState(false);
+  const [reviewsFetched, setReviewsFetched] = React.useState(false);
+
+  // Fetch reviews when reviews tab is selected
+  const handleTabChange = async (value: string) => {
+    if (value === "reviews" && !reviewsFetched) {
+      setReviewsLoading(true);
+      try {
+        const data = await fetchReviews(bus.id);
+        setReviews(data);
+        setReviewsFetched(true);
+      } catch (error) {
+        console.error("Failed to fetch reviews:", error);
+      } finally {
+        setReviewsLoading(false);
+      }
+    }
+  };
+
+  // Format review date
+  const formatReviewDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   const { route, bus } = trip;
   const price = route.base_price;
@@ -635,7 +663,7 @@ function TicketCard({ trip, availableSeats, formatTime, formatDate, formatDurati
       {/* EXPANDED CONTENT (Tabs) */}
       {isExpanded && (
         <div className="border-t bg-slate-50/50 p-4 animate-in slide-in-from-top-2 duration-200">
-          <Tabs defaultValue="images" className="w-full">
+          <Tabs defaultValue="images" className="w-full" onValueChange={handleTabChange}>
             <TabsList className="bg-white border w-full justify-start h-10 p-0 rounded-none border-b-0">
               <TabsTrigger
                 value="images"
@@ -654,6 +682,12 @@ function TicketCard({ trip, availableSeats, formatTime, formatDate, formatDurati
                 className="data-[state=active]:border-b-2 data-[state=active]:border-orange-600 data-[state=active]:text-orange-600 rounded-none h-full px-6 bg-transparent"
               >
                 Chính sách
+              </TabsTrigger>
+              <TabsTrigger
+                value="reviews"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-orange-600 data-[state=active]:text-orange-600 rounded-none h-full px-6 bg-transparent"
+              >
+                Đánh giá
               </TabsTrigger>
             </TabsList>
             <div className="bg-white border border-t-0 p-4 rounded-b-lg">
@@ -697,6 +731,100 @@ function TicketCard({ trip, availableSeats, formatTime, formatDate, formatDurati
                 <p className="text-sm text-slate-600 whitespace-pre-line">
                   {bus.policy || "Chính sách hủy vé linh hoạt, hoàn tiền 100% trước 24h."}
                 </p>
+              </TabsContent>
+              <TabsContent value="reviews" className="mt-0">
+                <div className="space-y-4">
+                  {/* Rating Summary */}
+                  <div className="flex items-center gap-4 pb-4 border-b">
+                    <div className="flex items-center gap-2">
+                      <div className="text-3xl font-bold text-orange-600">{bus.average_rating.toFixed(1)}</div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${star <= Math.round(bus.average_rating)
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "fill-slate-200 text-slate-200"
+                                }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-slate-500">{reviews.length} đánh giá</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reviews Loading State */}
+                  {reviewsLoading && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-orange-600" />
+                      <span className="ml-2 text-sm text-slate-500">Đang tải đánh giá...</span>
+                    </div>
+                  )}
+
+                  {/* Reviews List */}
+                  {!reviewsLoading && reviews.length > 0 && (
+                    <div className="space-y-4 max-h-80 overflow-y-auto">
+                      {reviews.map((review) => (
+                        <div key={review.id} className="flex gap-3 p-3 bg-slate-50 rounded-lg">
+                          {/* Avatar */}
+                          <div className="shrink-0">
+                            {review.user_avatar ? (
+                              <img
+                                src={review.user_avatar}
+                                alt={review.user_name}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                                <span className="text-orange-600 font-semibold text-sm">
+                                  {review.user_name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium text-sm text-slate-900">{review.user_name}</span>
+                              <span className="text-xs text-slate-400">{formatReviewDate(review.created_at)}</span>
+                            </div>
+                            {/* Stars */}
+                            <div className="flex items-center gap-1 mt-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-3 h-3 ${star <= review.rating
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "fill-slate-200 text-slate-200"
+                                    }`}
+                                />
+                              ))}
+                            </div>
+                            {/* Comment */}
+                            <p className="text-sm text-slate-600 mt-2">{review.comment}</p>
+                            {/* Review Image */}
+                            {review.image && (
+                              <img
+                                src={review.image}
+                                alt="Review"
+                                className="mt-2 h-20 w-auto rounded-md object-cover"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Empty State */}
+                  {!reviewsLoading && reviews.length === 0 && reviewsFetched && (
+                    <p className="text-sm text-slate-500 text-center py-4">
+                      Chưa có đánh giá nào cho xe này.
+                    </p>
+                  )}
+                </div>
               </TabsContent>
             </div>
           </Tabs>
